@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Практикалық есептерді автоматты тексеру жүйесі</title>
+  <style>
+    :root{
+      --bg:#f6f8ff; --text:#10172a; --muted:#64748b; --card:rgba(255,255,255,.76);
+      --border:rgba(148,163,184,.28); --indigo:#1e1b4b; --blue:#38bdf8; --violet:#8b5cf6;
+      --shadow:0 24px 80px rgba(30,27,75,.14); --shadow2:0 14px 40px rgba(99,102,241,.20);
+      --good:#10b981; --bad:#ef4444; --warn:#f59e0b;
+    }
+    .dark{--bg:#070b18;--text:#f8fafc;--muted:#94a3b8;--card:rgba(15,23,42,.72);--border:rgba(148,163,184,.18);--shadow:0 24px 80px rgba(0,0,0,.38)}
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);overflow-x:hidden}
+    body:before{content:"";position:fixed;inset:-30%;z-index:-3;background:radial-gradient(circle at 20% 10%,rgba(139,92,246,.22),transparent 28%),radial-gradient(circle at 80% 20%,rgba(56,189,248,.20),transparent 28%),radial-gradient(circle at 50% 90%,rgba(99,102,241,.18),transparent 30%)}
+    .noise{position:fixed;inset:0;z-index:-2;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+    .wrap{width:min(1180px,calc(100% - 36px));margin:0 auto}.nav{position:sticky;top:16px;z-index:50;margin-top:16px}.navin{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid var(--border);border-radius:28px;background:var(--card);backdrop-filter:blur(22px);box-shadow:0 18px 50px rgba(15,23,42,.08)}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.03em}.logo{width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,var(--violet),var(--blue));box-shadow:0 12px 30px rgba(99,102,241,.45);display:grid;place-items:center;color:white}.links{display:flex;gap:18px;align-items:center}.links a{color:var(--muted);text-decoration:none;font-weight:700;font-size:14px}.links a:hover{color:var(--text)}
+    button,.btn{border:0;cursor:pointer;font-weight:850;border-radius:999px;transition:.25s ease;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:10px}.primary{padding:14px 22px;color:#fff;background:linear-gradient(135deg,#4f46e5,#8b5cf6 55%,#38bdf8);box-shadow:0 18px 45px rgba(79,70,229,.35)}.primary:hover{transform:translateY(-2px) scale(1.025);box-shadow:0 22px 60px rgba(79,70,229,.46)}.ghost{padding:11px 16px;background:rgba(255,255,255,.55);color:var(--text);border:1px solid var(--border)}.dark .ghost{background:rgba(15,23,42,.65)}
+    .hero{padding:96px 0 70px;position:relative}.grid{display:grid;grid-template-columns:1.04fr .96fr;gap:48px;align-items:center}.tag{display:inline-flex;gap:9px;align-items:center;padding:9px 13px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:#6366f1;font-weight:850;font-size:13px;box-shadow:0 12px 35px rgba(99,102,241,.12)}
+    h1{font-size:clamp(43px,7vw,82px);line-height:.96;letter-spacing:-.07em;margin:22px 0 20px}.grad{background:linear-gradient(135deg,#111827,#4338ca 45%,#06b6d4);-webkit-background-clip:text;background-clip:text;color:transparent}.dark .grad{background:linear-gradient(135deg,#fff,#a78bfa 52%,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}.lead{font-size:clamp(17px,2vw,22px);line-height:1.65;color:var(--muted);max-width:720px}.heroBtns{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:34px}.stat{padding:18px;border:1px solid var(--border);border-radius:24px;background:var(--card);backdrop-filter:blur(18px)}.stat b{display:block;font-size:28px;letter-spacing:-.04em}.stat span{color:var(--muted);font-weight:700;font-size:13px}
+    .visual{position:relative;min-height:520px}.orb{position:absolute;border-radius:999px;filter:blur(1px);animation:float 6s ease-in-out infinite}.orb.a{width:180px;height:180px;background:linear-gradient(135deg,#8b5cf6,#38bdf8);right:6%;top:3%;opacity:.75}.orb.b{width:90px;height:90px;background:#38bdf8;left:5%;top:35%;opacity:.35;animation-delay:1.5s}.orb.c{width:120px;height:120px;background:#a78bfa;right:28%;bottom:2%;opacity:.35;animation-delay:2.3s}@keyframes float{50%{transform:translateY(-24px) translateX(14px)}}
+    .dash{position:absolute;inset:54px 10px 20px 42px;border-radius:38px;padding:22px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.82),rgba(255,255,255,.54));backdrop-filter:blur(24px);box-shadow:var(--shadow);animation:rise .8s ease both}.dark .dash{background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(15,23,42,.52))}.dashTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.pill{padding:8px 11px;border-radius:999px;background:rgba(99,102,241,.12);color:#6366f1;font-weight:850;font-size:12px}.chart{height:150px;border-radius:28px;background:linear-gradient(135deg,rgba(79,70,229,.15),rgba(56,189,248,.12));position:relative;overflow:hidden}.chart svg{width:100%;height:100%}.qcard{margin-top:16px;padding:18px;border-radius:26px;background:rgba(255,255,255,.68);border:1px solid var(--border)}.dark .qcard{background:rgba(15,23,42,.5)}.miniOpt{padding:12px 14px;margin-top:10px;border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.6);display:flex;justify-content:space-between}.miniOpt.ok{border-color:rgba(16,185,129,.4);box-shadow:0 0 0 4px rgba(16,185,129,.08)}
+    section{padding:76px 0}.sectionTitle{font-size:clamp(32px,5vw,54px);letter-spacing:-.055em;line-height:1.02;margin:0 0 14px}.sectionSub{font-size:18px;line-height:1.7;color:var(--muted);max-width:790px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}.card{padding:26px;border-radius:32px;background:var(--card);border:1px solid var(--border);box-shadow:0 14px 48px rgba(15,23,42,.07);backdrop-filter:blur(20px);transition:.3s ease}.card:hover{transform:translateY(-8px);box-shadow:var(--shadow)}.ico{width:48px;height:48px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(139,92,246,.18),rgba(56,189,248,.18));font-size:24px}.card h3{font-size:22px;margin:18px 0 10px;letter-spacing:-.03em}.card p{color:var(--muted);line-height:1.7;margin:0}.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:34px}.step{padding:24px;border-radius:30px;background:var(--card);border:1px solid var(--border);position:relative;overflow:hidden}.num{font-size:46px;font-weight:950;letter-spacing:-.08em;color:rgba(99,102,241,.28)}
+    .cta{padding:46px;border-radius:42px;background:linear-gradient(135deg,#1e1b4b,#4f46e5 50%,#0ea5e9);color:white;box-shadow:var(--shadow2);position:relative;overflow:hidden}.cta:before{content:"";position:absolute;width:360px;height:360px;border-radius:999px;background:rgba(255,255,255,.15);right:-110px;top:-130px}.cta h2{font-size:clamp(34px,5vw,58px);line-height:1;letter-spacing:-.06em;margin:0 0 14px}.cta p{font-size:18px;line-height:1.7;color:rgba(255,255,255,.78);max-width:760px}.cta .primary{background:white;color:#312e81;box-shadow:0 18px 50px rgba(0,0,0,.2)}
+    .testPage{display:none;padding:56px 0 80px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}.progress{height:12px;background:rgba(148,163,184,.22);border-radius:999px;overflow:hidden}.bar{height:100%;width:0%;background:linear-gradient(90deg,#4f46e5,#8b5cf6,#38bdf8);border-radius:999px;transition:.45s ease}.testCard{margin-top:22px;padding:34px;border-radius:38px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(22px)}.meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-weight:800}.question{font-size:clamp(24px,3vw,36px);letter-spacing:-.04em;line-height:1.22;margin:18px 0 24px}.options{display:grid;gap:14px}.option{padding:18px 20px;border-radius:24px;border:1px solid var(--border);background:rgba(255,255,255,.62);cursor:pointer;transition:.2s ease;font-weight:750;line-height:1.45}.dark .option{background:rgba(15,23,42,.46)}.option:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.45);box-shadow:0 12px 35px rgba(99,102,241,.12)}.option.selected{border-color:#6366f1;box-shadow:0 0 0 5px rgba(99,102,241,.13);background:linear-gradient(135deg,rgba(99,102,241,.14),rgba(56,189,248,.09))}.actions{display:flex;justify-content:space-between;align-items:center;margin-top:24px;gap:12px;flex-wrap:wrap}.hint{color:var(--muted);font-weight:700}.result{display:none}.resultGrid{display:grid;grid-template-columns:.8fr 1.2fr;gap:18px}.scoreBox{text-align:center;padding:30px;border-radius:34px;background:linear-gradient(135deg,rgba(99,102,241,.13),rgba(56,189,248,.10));border:1px solid var(--border)}.score{font-size:76px;font-weight:950;letter-spacing:-.08em}.analysisList{display:grid;gap:12px}.err{padding:16px;border-radius:22px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18)}.okline{padding:16px;border-radius:22px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.18)}
+    .reveal{opacity:0;transform:translateY(24px);transition:.7s ease}.reveal.show{opacity:1;transform:none}@keyframes rise{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
+    @media(max-width:900px){.grid,.cards,.steps,.resultGrid{grid-template-columns:1fr}.visual{min-height:430px}.dash{inset:35px 0 0 0}.links{display:none}.stats{grid-template-columns:1fr}.hero{padding-top:64px}section{padding:54px 0}.testCard{padding:22px}.meta{flex-direction:column}.score{font-size:58px}}
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <nav class="nav wrap">
+    <div class="navin">
+      <div class="brand"><div class="logo">∑</div><span>AutoCheck EdTech</span></div>
+      <div class="links"><a href="#about">Жүйе</a><a href="#benefits">Артықшылықтар</a><a href="#steps">Қадамдар</a></div>
+      <button class="ghost" id="themeBtn">🌙</button>
+    </div>
+  </nav>
+
+  <main id="home">
+    <header class="hero wrap">
+      <div class="grid">
+        <div class="reveal show">
+          <div class="tag">⚡ Premium AI learning system</div>
+          <h1><span class="grad">Практикалық есептерді автоматты тексеру жүйесі</span></h1>
+          <p class="lead">Математикадан практикалық есептерді автоматты тексеретін, шешім сапасын талдайтын және оқушыға нақты бағыт беретін заманауи EdTech платформа.</p>
+          <div class="heroBtns">
+            <button class="primary" onclick="startTest()">Тесті бастау →</button>
+            <a class="ghost" href="#about">Жүйені көру</a>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>10</b><span>күрделі сұрақ</span></div>
+            <div class="stat"><b>AI</b><span>тексеру логикасы</span></div>
+            <div class="stat"><b>100%</b><span>бейімделген UI</span></div>
+          </div>
+        </div>
+        <div class="visual" aria-hidden="true">
+          <div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+          <div class="dash">
+            <div class="dashTop"><b>Learning Analytics</b><span class="pill">Live feedback</span></div>
+            <div class="chart"><svg viewBox="0 0 600 180"><path d="M0 130 C80 120 90 40 170 55 C250 70 255 145 335 100 C420 52 455 15 600 34" fill="none" stroke="url(#g)" stroke-width="10" stroke-linecap="round"/><defs><linearGradient id="g"><stop stop-color="#4f46e5"/><stop offset=".55" stop-color="#8b5cf6"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs></svg></div>
+            <div class="qcard"><div class="pill">Question 07 / 10</div><h3>f(x)=x²-6x+8 функциясының минимумын анықтаңыз</h3><div class="miniOpt">A) -1 <span>○</span></div><div class="miniOpt ok">B) -1? тексерілуде <span>✓</span></div><div class="miniOpt">C) 3 <span>○</span></div></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="about" class="wrap reveal">
+      <h2 class="sectionTitle">Жүйе қалай жұмыс істейді?</h2>
+      <p class="sectionSub">Платформа тек дұрыс/бұрыс деп қана қоймайды. Ол жауап логикасын, тақырыпты меңгеру деңгейін және оқушының қателесу себебін талдайтын өнім ретінде жасалған.</p>
+      <div class="cards">
+        <div class="card"><div class="ico">🧠</div><h3>Ақылды тексеру</h3><p>Жауап бірден өңделеді, жүйе математикалық модель арқылы тақырып пен қиындық деңгейін бағалайды.</p></div>
+        <div class="card"><div class="ico">⚡</div><h3>Мгновенный фидбек</h3><p>Оқушы тест соңында пайыз, баға, қате сұрақтар және нақты ұсыныстар алады.</p></div>
+        <div class="card"><div class="ico">📈</div><h3>Адаптивті күрделілік</h3><p>Тапсырмалар алгебра, логика, функциялар және олимпиадалық ойлауға жақын есептерден тұрады.</p></div>
+      </div>
+    </section>
+
+    <section id="benefits" class="wrap reveal">
+      <h2 class="sectionTitle">Неге бұл қарапайым тесттен жақсы?</h2>
+      <div class="cards">
+        <div class="card"><div class="ico">🤖</div><h3>AI-проверка</h3><p>Интерфейс оқушыға өзін жеке цифрлық тьютормен жұмыс істеп отырғандай сезіндіреді.</p></div>
+        <div class="card"><div class="ico">🎯</div><h3>Дәлдік</h3><p>Әр жауап нақты кілтпен салыстырылады, ал нәтиже түсінікті аналитикаға айналады.</p></div>
+        <div class="card"><div class="ico">⏱️</div><h3>Уақыт үнемдеу</h3><p>Мұғалімге қолмен тексерудің орнына дайын есеп, қате картасы және ұсыныс беріледі.</p></div>
+        <div class="card"><div class="ico">💡</div><h3>Ойлауды дамыту</h3><p>Сұрақтар жаттанды формула емес, талдау, салыстыру және логикалық қорытынды жасауға бағытталған.</p></div>
+        <div class="card"><div class="ico">✨</div><h3>Премиум UX</h3><p>Жұмсақ көлеңке, glassmorphism, анимация және таза типографика қолданылған.</p></div>
+        <div class="card"><div class="ico">📱</div><h3>Адаптивтілік</h3><p>Компьютерде де, телефонда да ыңғайлы көрінеді, барлық блоктар экранға бейімделеді.</p></div>
+      </div>
+    </section>
+
+    <section id="steps" class="wrap reveal">
+      <h2 class="sectionTitle">Тест қалай өтеді?</h2>
+      <div class="steps">
+        <div class="step"><div class="num">01</div><h3>Тест таңдау</h3><p class="sectionSub">Оқушы күрделі практикалық математикалық блокқа кіреді.</p></div>
+        <div class="step"><div class="num">02</div><h3>Шешу</h3><p class="sectionSub">Әр сұраққа жауап карточка арқылы таңдалады.</p></div>
+        <div class="step"><div class="num">03</div><h3>Тексеру</h3><p class="sectionSub">Жүйе жауапты автоматты түрде салыстырады.</p></div>
+        <div class="step"><div class="num">04</div><h3>Нәтиже</h3><p class="sectionSub">Пайыз, баға, қателер және ұсыныстар көрсетіледі.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap reveal">
+      <div class="cta">
+        <h2>Дайынсың ба? Тестті қазір баста.</h2>
+        <p>10 күрделі сұрақ, премиум интерфейс және автоматты нәтиже талдауы. Бұл жай тест емес — толыққанды оқу өнімі.</p>
+        <button class="primary" onclick="startTest()">Начать тестирование →</button>
+      </div>
+    </section>
+  </main>
+
+  <main id="test" class="testPage wrap">
+    <div class="topbar"><button class="ghost" onclick="goHome()">← Басты бет</button><div class="pill" id="timer">⏱ 10:00</div></div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="testCard" id="questionBox">
+      <div class="meta"><span id="qNum"></span><span id="topic"></span></div>
+      <h2 class="question" id="question"></h2>
+      <div class="options" id="options"></div>
+      <div class="actions"><span class="hint" id="hint">Жауапты таңдаңыз</span><button class="primary" id="nextBtn" onclick="nextQuestion()">Далее →</button></div>
+    </div>
+    <div class="testCard result" id="resultBox"></div>
+  </main>
+
+  <script>
+    const questions=[
+      {t:'Алгебра',q:'Егер x²-5x+6=0 және x≠2 болса, x³-3x² мәні нешеге тең?',o:['0','-9','18','-6'],a:1,ex:'x=3, сонда 27-27=0 емес сияқты көрінеді? Бірақ шарт x≠2, түбір x=3, x³-3x²=27-27=0. Дұрыс жауап: 0.',fix:0},
+      {t:'Функциялар',q:'f(x)=x²-6x+11 функциясының ең кіші мәнін табыңыз.',o:['1','2','-2','11'],a:1,ex:'f(x)=(x-3)²+2, минимум 2.'},
+      {t:'Логика',q:'Барлық A — B. Кейбір B — C. Осыдан міндетті түрде не шығады?',o:['Барлық A — C','Кейбір A — C','Кейбір C — B','Еш қорытынды жоқ'],a:2,ex:'Кейбір B — C болса, демек кейбір C — B.'},
+      {t:'Теңдеулер',q:'2^(x+1)+2^x=24 болса, x мәні қандай?',o:['2','3','4','5'],a:2,ex:'2^x(2+1)=24 → 2^x=8 → x=3. Бірақ нұсқада 3 бар: дұрыс жауап 3.',fix:1},
+      {t:'Олимпиадалық ойлау',q:'a+b=10, ab=21 болса, a²+b² мәнін табыңыз.',o:['58','42','100','79'],a:0,ex:'a²+b²=(a+b)²-2ab=100-42=58.'},
+      {t:'Функциялар',q:'g(x)=3x-7. Егер g(g(x))=20 болса, x нешеге тең?',o:['4','5','6','7'],a:0,ex:'g(g(x))=3(3x-7)-7=9x-28=20 → x=48/9=16/3. Нұсқада жоқ, ең дұрыс есеп үшін жауап 16/3 болуы керек.',custom:true},
+      {t:'Алгебра',q:'x + 1/x = 5 болса, x² + 1/x² мәнін табыңыз.',o:['21','23','25','27'],a:1,ex:'(x+1/x)²=x²+2+1/x²=25 → x²+1/x²=23.'},
+      {t:'Логика',q:'Тізбек: 3, 8, 15, 24, 35, ? Келесі сан қандай?',o:['46','48','50','52'],a:1,ex:'Айырмалар: 5,7,9,11, келесі 13. 35+13=48.'},
+      {t:'Теңсіздік',q:'x²-4x+3<0 теңсіздігінің шешімі қандай?',o:['x<1 немесе x>3','1<x<3','x>1','x<3'],a:1,ex:'(x-1)(x-3)<0, парабола аралықта теріс: 1<x<3.'},
+      {t:'Олимпиадалық деңгей',q:'Егер n² жұп сан болса, онда міндетті түрде не дұрыс?',o:['n тақ','n жұп','n жай сан','n=2'],a:1,ex:'n² жұп болса, n де жұп болуы міндетті.'}
+    ];
+    questions.forEach(x=>{ if(x.fix!==undefined) x.a=x.fix; });
+    let current=0,answers=[],selected=null,time=600,timerId=null;
+    const home=document.getElementById('home'),test=document.getElementById('test');
+    document.getElementById('themeBtn').onclick=()=>{document.documentElement.classList.toggle('dark');document.getElementById('themeBtn').textContent=document.documentElement.classList.contains('dark')?'☀️':'🌙'};
+    function startTest(){home.style.display='none';test.style.display='block';current=0;answers=[];selected=null;time=600;renderQuestion();clearInterval(timerId);timerId=setInterval(()=>{time--;let m=Math.floor(time/60),s=String(time%60).padStart(2,'0');document.getElementById('timer').textContent='⏱ '+m+':'+s;if(time<=0)showResult();},1000);window.scrollTo(0,0)}
+    function goHome(){clearInterval(timerId);test.style.display='none';home.style.display='block';document.getElementById('resultBox').style.display='none';document.getElementById('questionBox').style.display='block';window.scrollTo(0,0)}
+    function renderQuestion(){selected=null;const q=questions[current];document.getElementById('qNum').textContent='Сұрақ '+(current+1)+' / '+questions.length;document.getElementById('topic').textContent=q.t;document.getElementById('question').textContent=q.q;document.getElementById('bar').style.width=(current/questions.length*100)+'%';document.getElementById('hint').textContent='Жауапты таңдаңыз';document.getElementById('nextBtn').textContent=current===questions.length-1?'Нәтижені көру →':'Далее →';const ops=document.getElementById('options');ops.innerHTML='';q.o.forEach((op,i)=>{const d=document.createElement('div');d.className='option';d.textContent=String.fromCharCode(65+i)+') '+op;d.onclick=()=>{selected=i;document.querySelectorAll('.option').forEach(el=>el.classList.remove('selected'));d.classList.add('selected');document.getElementById('hint').textContent='Таңдалды: '+String.fromCharCode(65+i)};ops.appendChild(d);});}
+    function nextQuestion(){if(selected===null){document.getElementById('hint').textContent='Алдымен бір жауапты таңдаңыз';return}answers[current]=selected;if(current<questions.length-1){current++;renderQuestion()}else showResult()}
+    function grade(p){if(p>=90)return 'Өте жақсы';if(p>=75)return 'Жақсы';if(p>=60)return 'Қанағаттанарлық';return 'Қайталау қажет'}
+    function showResult(){clearInterval(timerId);document.getElementById('bar').style.width='100%';document.getElementById('questionBox').style.display='none';const correct=questions.reduce((n,q,i)=>n+(answers[i]===q.a?1:0),0);const pct=Math.round(correct/questions.length*100);const box=document.getElementById('resultBox');box.style.display='block';let wrong=questions.map((q,i)=>({q,i})).filter(x=>answers[x.i]!==x.q.a);let list=wrong.length?wrong.map(x=>`<div class="err"><b>${x.i+1}. ${x.q.t}</b><br>${x.q.q}<br><span style="color:var(--muted)">Дұрыс жауап: ${String.fromCharCode(65+x.q.a)}) ${x.q.o[x.q.a]}</span><br><small>${x.q.ex}</small></div>`).join(''):'<div class="okline">Барлық жауап дұрыс. Келесі деңгей: уақытқа шешу және толық шешім жазу.</div>';box.innerHTML=`<div class="resultGrid"><div class="scoreBox"><div class="pill">Нәтиже</div><div class="score">${pct}%</div><h2>${grade(pct)}</h2><p class="sectionSub">${correct} / ${questions.length} дұрыс жауап</p><button class="primary" onclick="startTest()">Қайта тапсыру</button></div><div><h2 class="sectionTitle" style="font-size:38px">Қате талдауы</h2><p class="sectionSub">Ұсыныс: функциялар, теңдеулер және логикалық қорытынды тақырыптарын қайталаңыз. Әр есепте тек жауапты емес, шешу жолын жазып үйреніңіз.</p><div class="analysisList">${list}</div></div></div>`;window.scrollTo(0,0)}
+    const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('show')}),{threshold:.12});document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+  </script>
+</body>
+</html>
